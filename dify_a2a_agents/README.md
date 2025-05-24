@@ -180,13 +180,19 @@ See [SETUP.md](SETUP.md) for detailed workflow configuration.
 ```bash
 # Core Dify settings
 DIFY_BASE_URL=http://localhost/v1
-DIFY_API_KEY=your_api_key
 
-# Workflow IDs (from Dify dashboard)
+# Agent-specific API keys and workflow IDs (from Dify dashboard)
 ORCHESTRATOR_WORKFLOW_ID=wf-xxxxxxxxx
+ORCHESTRATOR_API_KEY=app-your-orchestrator-api-key
+
 RESEARCH_WORKFLOW_ID=wf-yyyyyyyyy  
+RESEARCH_API_KEY=app-your-research-api-key
+
 ANALYSIS_WORKFLOW_ID=wf-zzzzzzzzz
+ANALYSIS_API_KEY=app-your-analysis-api-key
+
 CODE_WORKFLOW_ID=wf-aaaaaaaaa
+CODE_API_KEY=app-your-code-api-key
 ```
 
 ## 🔄 How It Works

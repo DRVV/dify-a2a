@@ -35,9 +35,8 @@ nano .env
 ```
 
 **Required Configuration:**
-- `DIFY_API_KEY`: Your Dify API key
 - `DIFY_BASE_URL`: Dify API URL (default: http://localhost/v1)
-- Workflow IDs for each agent (see Dify Workflow Setup below)
+- Agent-specific API keys and workflow IDs for each agent (see Dify Workflow Setup below)
 
 ### 3. Set Up Dify Workflows
 
@@ -101,8 +100,11 @@ RESEARCH_WORKFLOW_ID=wf-yyyyyyyyy
 ANALYSIS_WORKFLOW_ID=wf-zzzzzzzzz
 CODE_WORKFLOW_ID=wf-aaaaaaaaa
 
-# Get API keys from Dify app settings
-DIFY_API_KEY=app-your-api-key-here
+# Get agent-specific API keys from Dify app settings
+ORCHESTRATOR_API_KEY=app-your-orchestrator-api-key-here
+RESEARCH_API_KEY=app-your-research-api-key-here
+ANALYSIS_API_KEY=app-your-analysis-api-key-here
+CODE_API_KEY=app-your-code-api-key-here
 ```
 
 ## Running the System

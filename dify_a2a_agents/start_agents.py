@@ -142,9 +142,15 @@ def main():
         sys.exit(1)
     
     # Verify Dify configuration
-    dify_api_key = os.getenv("DIFY_API_KEY")
-    if not dify_api_key:
-        print("⚠️  DIFY_API_KEY not set. Please copy .env.example to .env and configure.")
+    # Check if agent-specific API keys are configured
+    missing_keys = []
+    for agent_name, config in AGENTS_CONFIG.items():
+        if not config.dify_api_key:
+            missing_keys.append(f"{agent_name.upper()}_API_KEY")
+    
+    if missing_keys:
+        print(f"⚠️  Missing API keys: {', '.join(missing_keys)}")
+        print("   Please copy .env.example to .env and configure agent-specific API keys.")
     
     launcher = AgentLauncher()
     launcher.start_all_agents()

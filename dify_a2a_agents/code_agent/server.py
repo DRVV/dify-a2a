@@ -26,7 +26,7 @@ def create_code_server():
     # Create Dify client
     dify_client = DifyWorkflowClient(
         base_url=config.dify_base_url,
-        api_key=config.dify_api_key or os.getenv("DIFY_API_KEY", "")
+        api_key=config.dify_api_key
     )
     
     # Create skills from configuration

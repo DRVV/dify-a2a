@@ -150,4 +150,3 @@ def get_all_agent_urls() -> Dict[str, str]:
 
 # Environment variables for Dify connection
 DIFY_BASE_URL = os.getenv("DIFY_BASE_URL", "http://localhost/v1")
-DEFAULT_DIFY_API_KEY = os.getenv("DIFY_API_KEY", "")

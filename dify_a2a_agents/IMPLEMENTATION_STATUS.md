@@ -34,40 +34,49 @@ python import_workflows.py
 ```
 
 This will:
-- Prompt for your Dify API key
+- Prompt for your Dify API keys for each workflow
 - Import all 4 workflows
-- Update your `.env` file with workflow IDs
+- Update your `.env` file with workflow IDs and API keys
 
 ### 2. Get Required API Keys
 
-You'll need to obtain:
+You'll need to obtain agent-specific API keys:
 
-#### Dify API Key
+#### Agent-Specific Dify API Keys
 1. Access your Dify instance at http://localhost/
-2. Go to Apps → Create New App (or use existing)
-3. Navigate to API Access
-4. Copy the API key
+2. Create separate apps for each agent (or use existing ones):
+   - Orchestrator App → Copy API key
+   - Research App → Copy API key
+   - Analysis App → Copy API key
+   - Code App → Copy API key
+3. Each app should have its corresponding workflow
 
 #### Workflow IDs (Auto-generated)
 After import, these will be automatically added to your `.env`:
-- `ORCHESTRATOR_WORKFLOW_ID`
-- `RESEARCH_WORKFLOW_ID` 
-- `ANALYSIS_WORKFLOW_ID`
-- `CODE_WORKFLOW_ID`
+- `ORCHESTRATOR_WORKFLOW_ID` & `ORCHESTRATOR_API_KEY`
+- `RESEARCH_WORKFLOW_ID` & `RESEARCH_API_KEY`
+- `ANALYSIS_WORKFLOW_ID` & `ANALYSIS_API_KEY`
+- `CODE_WORKFLOW_ID` & `CODE_API_KEY`
 
 ### 3. Configure Environment
 
 Update your `.env` file (will be partially automated by import script):
 ```bash
 # Dify Configuration
-DIFY_API_KEY=app-your-api-key-here
 DIFY_BASE_URL=http://localhost/v1
 
-# Workflow IDs (auto-populated by import script)
+# Agent-specific workflow IDs and API keys (auto-populated by import script)
 ORCHESTRATOR_WORKFLOW_ID=wf-xxxxxxxxx
+ORCHESTRATOR_API_KEY=app-your-orchestrator-api-key
+
 RESEARCH_WORKFLOW_ID=wf-yyyyyyyyy
+RESEARCH_API_KEY=app-your-research-api-key
+
 ANALYSIS_WORKFLOW_ID=wf-zzzzzzzzz
+ANALYSIS_API_KEY=app-your-analysis-api-key
+
 CODE_WORKFLOW_ID=wf-aaaaaaaaa
+CODE_API_KEY=app-your-code-api-key
 
 # Agent Configuration
 ORCHESTRATOR_PORT=9001
@@ -143,7 +152,7 @@ python test_client.py
 ### Common Issues
 
 1. **Import Errors**: Ensure Dify is running and accessible at http://localhost/
-2. **API Key Issues**: Verify the API key is correct and has proper permissions
+2. **API Key Issues**: Verify each agent's API key is correct and has proper permissions
 3. **Workflow Parsing**: Check JSON syntax in workflow files
 4. **Port Conflicts**: Ensure ports 9001-9004 are available
 
@@ -155,7 +164,7 @@ curl http://localhost/health
 
 # Test individual workflow import
 curl -X POST "http://localhost/console/api/apps/import" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer YOUR_AGENT_API_KEY" \
   -H "Content-Type: application/json" \
   -d @workflows/orchestrator_workflow.json
 
@@ -197,4 +206,4 @@ curl -X POST http://localhost:9002/ \
             └───────────┘ └────────────┘ └──────────┘
 ```
 
-The implementation is now ready for deployment! Just run the import script with your API keys to complete the setup.
+The implementation is now ready for deployment! Each agent uses its own dedicated API key for maximum security and flexibility.
