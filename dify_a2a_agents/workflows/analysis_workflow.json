@@ -1,0 +1,481 @@
+{
+  "app": {
+    "icon": "📊",
+    "icon_background": "#FFEAD5",
+    "mode": "workflow",
+    "name": "Analysis Agent Workflow"
+  },
+  "workflow": {
+    "features": {
+      "file_upload": {
+        "image": {
+          "enabled": false,
+          "number_limits": 3,
+          "transfer_methods": [
+            "local_file",
+            "remote_url"
+          ]
+        }
+      },
+      "opening_statement": "",
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false,
+        "language": "",
+        "voice": ""
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "data": {
+            "sourceType": "start",
+            "targetType": "llm"
+          },
+          "id": "start-identify_patterns",
+          "source": "start",
+          "sourceHandle": "source",
+          "target": "identify_patterns",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "llm"
+          },
+          "id": "identify_patterns-extract_insights",
+          "source": "identify_patterns",
+          "sourceHandle": "source",
+          "target": "extract_insights",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "llm"
+          },
+          "id": "extract_insights-generate_recommendations",
+          "source": "extract_insights",
+          "sourceHandle": "source",
+          "target": "generate_recommendations",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code"
+          },
+          "id": "generate_recommendations-format_output",
+          "source": "generate_recommendations",
+          "sourceHandle": "source",
+          "target": "format_output",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "code",
+            "targetType": "end"
+          },
+          "id": "format_output-end",
+          "source": "format_output",
+          "sourceHandle": "source",
+          "target": "end",
+          "targetHandle": "target",
+          "type": "custom"
+        }
+      ],
+      "nodes": [
+        {
+          "data": {
+            "desc": "",
+            "selected": false,
+            "title": "Start",
+            "type": "start",
+            "variables": [
+              {
+                "label": "Data to Analyze",
+                "max_length": 2000,
+                "options": [],
+                "required": true,
+                "type": "paragraph",
+                "variable": "data"
+              },
+              {
+                "label": "Analysis Type",
+                "max_length": 100,
+                "options": [
+                  "Statistical Analysis",
+                  "Trend Analysis",
+                  "Comparative Analysis",
+                  "Root Cause Analysis",
+                  "Predictive Analysis"
+                ],
+                "required": true,
+                "type": "select",
+                "variable": "analysis_type"
+              },
+              {
+                "label": "Focus Areas",
+                "max_length": 500,
+                "options": [],
+                "required": false,
+                "type": "text-input",
+                "variable": "focus_areas"
+              }
+            ]
+          },
+          "height": 141,
+          "id": "start",
+          "position": {
+            "x": 80,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 80,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Identify patterns and trends in the data",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 1000,
+                "presence_penalty": 0,
+                "temperature": 0.3,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are a data analyst expert. Analyze the provided data to identify patterns, trends, and anomalies.\n\nAnalysis Type: {{#start.analysis_type#}}\nFocus Areas: {{#start.focus_areas#}}\n\nFor the given data, identify:\n1. Key patterns and trends\n2. Notable anomalies or outliers\n3. Correlations between different variables\n4. Temporal patterns (if time-based data)\n5. Statistical distributions and characteristics\n\nProvide detailed observations with supporting evidence."
+              },
+              {
+                "role": "user",
+                "text": "Data to analyze: {{#start.data#}}"
+              }
+            ],
+            "selected": false,
+            "title": "Identify Patterns",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "data"
+                ],
+                "variable": "data"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "analysis_type"
+                ],
+                "variable": "analysis_type"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "focus_areas"
+                ],
+                "variable": "focus_areas"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "identify_patterns",
+          "position": {
+            "x": 364,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 364,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Extract meaningful insights from identified patterns",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 1200,
+                "presence_penalty": 0,
+                "temperature": 0.5,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "Based on the pattern analysis, extract meaningful insights and implications.\n\nPattern Analysis: {{#identify_patterns.text#}}\nOriginal Data: {{#start.data#}}\nAnalysis Type: {{#start.analysis_type#}}\n\nExtract insights covering:\n1. What the patterns mean in business/practical context\n2. Potential causes behind observed trends\n3. Impact assessment of identified patterns\n4. Confidence level in findings\n5. Key metrics and KPIs derived from analysis\n6. Risk factors or opportunities identified\n\nProvide actionable insights with clear explanations."
+              }
+            ],
+            "selected": false,
+            "title": "Extract Insights",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "identify_patterns",
+                  "text"
+                ],
+                "variable": "patterns"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "data"
+                ],
+                "variable": "data"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "analysis_type"
+                ],
+                "variable": "analysis_type"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "extract_insights",
+          "position": {
+            "x": 648,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 648,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Generate actionable recommendations based on insights",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 1000,
+                "presence_penalty": 0,
+                "temperature": 0.7,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "Generate actionable recommendations based on the analysis insights.\n\nInsights: {{#extract_insights.text#}}\nPattern Analysis: {{#identify_patterns.text#}}\nFocus Areas: {{#start.focus_areas#}}\n\nProvide recommendations including:\n1. Immediate actions (short-term, 0-3 months)\n2. Strategic initiatives (medium-term, 3-12 months)\n3. Long-term considerations (12+ months)\n4. Resource requirements for each recommendation\n5. Expected outcomes and success metrics\n6. Risk mitigation strategies\n7. Priority ranking of recommendations\n\nMake recommendations specific, measurable, and actionable."
+              }
+            ],
+            "selected": false,
+            "title": "Generate Recommendations",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "extract_insights",
+                  "text"
+                ],
+                "variable": "insights"
+              },
+              {
+                "value_selector": [
+                  "identify_patterns",
+                  "text"
+                ],
+                "variable": "patterns"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "focus_areas"
+                ],
+                "variable": "focus_areas"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "generate_recommendations",
+          "position": {
+            "x": 932,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 932,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "code": "import json\nfrom datetime import datetime\n\ndef main(patterns: str, insights: str, recommendations: str, analysis_type: str) -> dict:\n    # Format the complete analysis report\n    \n    report = {\n        \"analysis_metadata\": {\n            \"timestamp\": datetime.now().isoformat(),\n            \"analysis_type\": analysis_type,\n            \"agent\": \"analysis_agent\"\n        },\n        \"executive_summary\": {\n            \"key_findings\": \"Analysis completed successfully\",\n            \"confidence_level\": \"High\",\n            \"data_quality\": \"Good\"\n        },\n        \"detailed_analysis\": {\n            \"patterns_and_trends\": patterns,\n            \"insights_extracted\": insights,\n            \"recommendations\": recommendations\n        },\n        \"next_steps\": [\n            \"Review recommendations with stakeholders\",\n            \"Prioritize implementation based on impact and resources\",\n            \"Establish monitoring and measurement framework\",\n            \"Schedule follow-up analysis as needed\"\n        ]\n    }\n    \n    # Create a formatted summary for easy reading\n    summary = f\"\"\"ANALYSIS REPORT - {analysis_type}\n    \nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n    \n=== PATTERNS & TRENDS ===\n{patterns}\n    \n=== KEY INSIGHTS ===\n{insights}\n    \n=== RECOMMENDATIONS ===\n{recommendations}\n    \n=== NEXT STEPS ===\n• Review recommendations with stakeholders\n• Prioritize implementation based on impact and resources\n• Establish monitoring and measurement framework\n• Schedule follow-up analysis as needed\n\"\"\"\n    \n    return {\n        \"analysis_report\": json.dumps(report, indent=2),\n        \"formatted_summary\": summary\n    }",
+            "code_language": "python3",
+            "desc": "Format the complete analysis output",
+            "outputs": {
+              "analysis_report": {
+                "children": null,
+                "type": "string"
+              },
+              "formatted_summary": {
+                "children": null,
+                "type": "string"
+              }
+            },
+            "selected": false,
+            "title": "Format Output",
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "identify_patterns",
+                  "text"
+                ],
+                "variable": "patterns"
+              },
+              {
+                "value_selector": [
+                  "extract_insights",
+                  "text"
+                ],
+                "variable": "insights"
+              },
+              {
+                "value_selector": [
+                  "generate_recommendations",
+                  "text"
+                ],
+                "variable": "recommendations"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "analysis_type"
+                ],
+                "variable": "analysis_type"
+              }
+            ]
+          },
+          "height": 53,
+          "id": "format_output",
+          "position": {
+            "x": 1216,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 1216,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "desc": "",
+            "outputs": [
+              {
+                "value_selector": [
+                  "format_output",
+                  "formatted_summary"
+                ],
+                "variable": "analysis_summary"
+              }
+            ],
+            "selected": false,
+            "title": "End",
+            "type": "end"
+          },
+          "height": 89,
+          "id": "end",
+          "position": {
+            "x": 1500,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 1500,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        }
+      ],
+      "viewport": {
+        "x": 136,
+        "y": 17,
+        "zoom": 1
+      }
+    }
+  }
+}

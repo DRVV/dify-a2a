@@ -1,0 +1,284 @@
+{
+  "app": {
+    "icon": "🎯",
+    "icon_background": "#FFEAD5",
+    "mode": "workflow",
+    "name": "Orchestrator Agent Workflow"
+  },
+  "workflow": {
+    "features": {
+      "file_upload": {
+        "image": {
+          "enabled": false,
+          "number_limits": 3,
+          "transfer_methods": [
+            "local_file",
+            "remote_url"
+          ]
+        }
+      },
+      "opening_statement": "",
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false,
+        "language": "",
+        "voice": ""
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "data": {
+            "sourceType": "start",
+            "targetType": "llm"
+          },
+          "id": "start-analyze_query",
+          "source": "start",
+          "sourceHandle": "source",
+          "target": "analyze_query",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code"
+          },
+          "id": "analyze_query-parse_decision",
+          "source": "analyze_query",
+          "sourceHandle": "source",
+          "target": "parse_decision",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "code",
+            "targetType": "end"
+          },
+          "id": "parse_decision-end",
+          "source": "parse_decision",
+          "sourceHandle": "source",
+          "target": "end",
+          "targetHandle": "target",
+          "type": "custom"
+        }
+      ],
+      "nodes": [
+        {
+          "data": {
+            "desc": "",
+            "selected": false,
+            "title": "Start",
+            "type": "start",
+            "variables": [
+              {
+                "label": "User Query",
+                "max_length": 1000,
+                "options": [],
+                "required": true,
+                "type": "paragraph",
+                "variable": "user_input"
+              },
+              {
+                "label": "Available Agents",
+                "max_length": 500,
+                "options": [],
+                "required": true,
+                "type": "text-input",
+                "variable": "available_agents"
+              },
+              {
+                "label": "Agent Capabilities",
+                "max_length": 1000,
+                "options": [],
+                "required": true,
+                "type": "paragraph",
+                "variable": "agent_capabilities"
+              }
+            ]
+          },
+          "height": 115,
+          "id": "start",
+          "position": {
+            "x": 80,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 80,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Analyze user input and determine which agents to involve",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 1000,
+                "presence_penalty": 0,
+                "temperature": 0.7,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are an intelligent query router for a multi-agent system. Analyze the user's query and determine which agents should be involved based on their capabilities.\n\nAvailable agents: {{#start.available_agents#}}\nAgent capabilities: {{#start.agent_capabilities#}}\n\nFor each query, determine:\n1. Which agents are needed (research, analysis, code, or combination)\n2. The priority/order of agent involvement\n3. The reasoning for your decision\n\nRespond with a JSON object containing:\n- selected_agents: array of agent names\n- reasoning: explanation of why these agents were chosen\n- execution_order: suggested order of agent execution"
+              },
+              {
+                "role": "user",
+                "text": "User query: {{#start.user_input#}}"
+              }
+            ],
+            "selected": false,
+            "title": "Analyze Query",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "user_input"
+                ],
+                "variable": "user_input"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "available_agents"
+                ],
+                "variable": "available_agents"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "agent_capabilities"
+                ],
+                "variable": "agent_capabilities"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "analyze_query",
+          "position": {
+            "x": 364,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 364,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "code": "import json\nimport re\n\ndef main(analysis_result: str) -> dict:\n    try:\n        # Try to extract JSON from the response\n        json_match = re.search(r'\\{.*\\}', analysis_result, re.DOTALL)\n        if json_match:\n            decision = json.loads(json_match.group())\n        else:\n            # Fallback parsing\n            decision = {\n                \"selected_agents\": [\"research\"],\n                \"reasoning\": \"Default routing due to parsing error\",\n                \"execution_order\": [\"research\"]\n            }\n        \n        # Validate required fields\n        required_fields = [\"selected_agents\", \"reasoning\", \"execution_order\"]\n        for field in required_fields:\n            if field not in decision:\n                decision[field] = [] if field.endswith(\"_agents\") or field.endswith(\"_order\") else \"Not specified\"\n        \n        return {\n            \"routing_decision\": json.dumps(decision, indent=2)\n        }\n    except Exception as e:\n        return {\n            \"routing_decision\": json.dumps({\n                \"selected_agents\": [\"research\"],\n                \"reasoning\": f\"Error parsing decision: {str(e)}\",\n                \"execution_order\": [\"research\"]\n            }, indent=2)\n        }\n",
+            "code_language": "python3",
+            "desc": "Parse and validate the routing decision from LLM",
+            "outputs": {
+              "routing_decision": {
+                "children": null,
+                "type": "string"
+              }
+            },
+            "selected": false,
+            "title": "Parse Routing Decision",
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "analyze_query",
+                  "text"
+                ],
+                "variable": "analysis_result"
+              }
+            ]
+          },
+          "height": 53,
+          "id": "parse_decision",
+          "position": {
+            "x": 648,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 648,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "desc": "",
+            "outputs": [
+              {
+                "value_selector": [
+                  "parse_decision",
+                  "routing_decision"
+                ],
+                "variable": "routing_decision"
+              }
+            ],
+            "selected": false,
+            "title": "End",
+            "type": "end"
+          },
+          "height": 89,
+          "id": "end",
+          "position": {
+            "x": 932,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 932,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        }
+      ],
+      "viewport": {
+        "x": 136,
+        "y": 17,
+        "zoom": 1
+      }
+    }
+  }
+}

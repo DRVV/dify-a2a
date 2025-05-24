@@ -1,0 +1,604 @@
+{
+  "app": {
+    "icon": "💻",
+    "icon_background": "#FFEAD5",
+    "mode": "workflow",
+    "name": "Code Agent Workflow"
+  },
+  "workflow": {
+    "features": {
+      "file_upload": {
+        "image": {
+          "enabled": false,
+          "number_limits": 3,
+          "transfer_methods": [
+            "local_file",
+            "remote_url"
+          ]
+        }
+      },
+      "opening_statement": "",
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false,
+        "language": "",
+        "voice": ""
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "data": {
+            "sourceType": "start",
+            "targetType": "llm"
+          },
+          "id": "start-analyze_requirements",
+          "source": "start",
+          "sourceHandle": "source",
+          "target": "analyze_requirements",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "llm"
+          },
+          "id": "analyze_requirements-generate_code",
+          "source": "analyze_requirements",
+          "sourceHandle": "source",
+          "target": "generate_code",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code"
+          },
+          "id": "generate_code-validate_syntax",
+          "source": "generate_code",
+          "sourceHandle": "source",
+          "target": "validate_syntax",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "code",
+            "targetType": "llm"
+          },
+          "id": "validate_syntax-optimize_code",
+          "source": "validate_syntax",
+          "sourceHandle": "source",
+          "target": "optimize_code",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code"
+          },
+          "id": "optimize_code-format_output",
+          "source": "optimize_code",
+          "sourceHandle": "source",
+          "target": "format_output",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "code",
+            "targetType": "end"
+          },
+          "id": "format_output-end",
+          "source": "format_output",
+          "sourceHandle": "source",
+          "target": "end",
+          "targetHandle": "target",
+          "type": "custom"
+        }
+      ],
+      "nodes": [
+        {
+          "data": {
+            "desc": "",
+            "selected": false,
+            "title": "Start",
+            "type": "start",
+            "variables": [
+              {
+                "label": "Code Requirements",
+                "max_length": 2000,
+                "options": [],
+                "required": true,
+                "type": "paragraph",
+                "variable": "requirements"
+              },
+              {
+                "label": "Programming Language",
+                "max_length": 50,
+                "options": [
+                  "Python",
+                  "JavaScript",
+                  "TypeScript",
+                  "Java",
+                  "C++",
+                  "Go",
+                  "Rust",
+                  "PHP",
+                  "Ruby",
+                  "C#"
+                ],
+                "required": true,
+                "type": "select",
+                "variable": "language"
+              },
+              {
+                "label": "Code Type",
+                "max_length": 50,
+                "options": [
+                  "Function",
+                  "Class",
+                  "Module",
+                  "Script",
+                  "API Endpoint",
+                  "Unit Test",
+                  "Algorithm"
+                ],
+                "required": true,
+                "type": "select",
+                "variable": "code_type"
+              },
+              {
+                "label": "Additional Context",
+                "max_length": 1000,
+                "options": [],
+                "required": false,
+                "type": "paragraph",
+                "variable": "context"
+              }
+            ]
+          },
+          "height": 167,
+          "id": "start",
+          "position": {
+            "x": 80,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 80,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Analyze and break down the code requirements",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 800,
+                "presence_penalty": 0,
+                "temperature": 0.3,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are a senior software architect. Analyze the code requirements and create a detailed implementation plan.\n\nRequirements: {{#start.requirements#}}\nLanguage: {{#start.language#}}\nCode Type: {{#start.code_type#}}\nContext: {{#start.context#}}\n\nProvide:\n1. Functional requirements breakdown\n2. Technical specifications\n3. Input/output definitions\n4. Key algorithms or patterns to use\n5. Error handling considerations\n6. Performance requirements\n7. Testing considerations\n\nCreate a structured analysis that will guide code generation."
+              }
+            ],
+            "selected": false,
+            "title": "Analyze Requirements",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "requirements"
+                ],
+                "variable": "requirements"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "language"
+                ],
+                "variable": "language"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "code_type"
+                ],
+                "variable": "code_type"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "context"
+                ],
+                "variable": "context"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "analyze_requirements",
+          "position": {
+            "x": 364,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 364,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Generate the actual code based on analysis",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 2000,
+                "presence_penalty": 0,
+                "temperature": 0.2,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are an expert {{#start.language#}} developer. Generate high-quality, production-ready code based on the requirements analysis.\n\nRequirement Analysis: {{#analyze_requirements.text#}}\nOriginal Requirements: {{#start.requirements#}}\nLanguage: {{#start.language#}}\nCode Type: {{#start.code_type#}}\n\nGenerate code that:\n1. Follows best practices for {{#start.language#}}\n2. Includes proper error handling\n3. Has clear documentation/comments\n4. Is modular and maintainable\n5. Includes type hints (where applicable)\n6. Follows language-specific conventions\n\nProvide only the code with minimal explanation. Include imports/dependencies at the top."
+              }
+            ],
+            "selected": false,
+            "title": "Generate Code",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "analyze_requirements",
+                  "text"
+                ],
+                "variable": "analysis"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "requirements"
+                ],
+                "variable": "requirements"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "language"
+                ],
+                "variable": "language"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "code_type"
+                ],
+                "variable": "code_type"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "generate_code",
+          "position": {
+            "x": 648,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 648,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "code": "import re\nimport ast\n\ndef main(generated_code: str, language: str) -> dict:\n    validation_results = {\n        \"syntax_valid\": False,\n        \"issues_found\": [],\n        \"suggestions\": [],\n        \"complexity_score\": \"Medium\"\n    }\n    \n    try:\n        # Basic syntax validation based on language\n        if language.lower() == \"python\":\n            # Try to parse Python code\n            try:\n                ast.parse(generated_code)\n                validation_results[\"syntax_valid\"] = True\n            except SyntaxError as e:\n                validation_results[\"issues_found\"].append(f\"Python syntax error: {str(e)}\")\n        \n        elif language.lower() in [\"javascript\", \"typescript\"]:\n            # Basic JS/TS validation checks\n            if \"{\" in generated_code and \"}\" in generated_code:\n                validation_results[\"syntax_valid\"] = True\n            else:\n                validation_results[\"issues_found\"].append(\"Missing braces or incomplete function structure\")\n        \n        else:\n            # Generic validation for other languages\n            if len(generated_code.strip()) > 10:\n                validation_results[\"syntax_valid\"] = True\n            else:\n                validation_results[\"issues_found\"].append(\"Code appears too short or incomplete\")\n        \n        # Code quality checks\n        if \"TODO\" in generated_code or \"FIXME\" in generated_code:\n            validation_results[\"suggestions\"].append(\"Code contains TODO/FIXME comments - consider completion\")\n        \n        if len(generated_code.split('\\n')) > 100:\n            validation_results[\"complexity_score\"] = \"High\"\n            validation_results[\"suggestions\"].append(\"Consider breaking down into smaller functions\")\n        elif len(generated_code.split('\\n')) < 20:\n            validation_results[\"complexity_score\"] = \"Low\"\n        \n        # Check for basic documentation\n        if \"def \" in generated_code and '\"\"\"' not in generated_code and \"#\" not in generated_code:\n            validation_results[\"suggestions\"].append(\"Consider adding documentation or comments\")\n        \n    except Exception as e:\n        validation_results[\"issues_found\"].append(f\"Validation error: {str(e)}\")\n    \n    return {\n        \"validation_report\": str(validation_results),\n        \"is_valid\": validation_results[\"syntax_valid\"],\n        \"issue_count\": len(validation_results[\"issues_found\"])\n    }",
+            "code_language": "python3",
+            "desc": "Validate syntax and code quality",
+            "outputs": {
+              "validation_report": {
+                "children": null,
+                "type": "string"
+              },
+              "is_valid": {
+                "children": null,
+                "type": "boolean"
+              },
+              "issue_count": {
+                "children": null,
+                "type": "number"
+              }
+            },
+            "selected": false,
+            "title": "Validate Syntax",
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "generate_code",
+                  "text"
+                ],
+                "variable": "generated_code"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "language"
+                ],
+                "variable": "language"
+              }
+            ]
+          },
+          "height": 53,
+          "id": "validate_syntax",
+          "position": {
+            "x": 932,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 932,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Optimize and improve the generated code",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 1500,
+                "presence_penalty": 0,
+                "temperature": 0.3,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are a code optimization expert. Review and improve the generated code based on validation results.\n\nGenerated Code: {{#generate_code.text#}}\nValidation Report: {{#validate_syntax.validation_report#}}\nLanguage: {{#start.language#}}\n\nOptimize the code for:\n1. Performance improvements\n2. Readability and maintainability\n3. Security best practices\n4. Memory efficiency\n5. Error handling robustness\n6. Code organization\n\nIf validation found issues, fix them. Provide the optimized version of the code with explanatory comments for major improvements made."
+              }
+            ],
+            "selected": false,
+            "title": "Optimize Code",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "generate_code",
+                  "text"
+                ],
+                "variable": "code"
+              },
+              {
+                "value_selector": [
+                  "validate_syntax",
+                  "validation_report"
+                ],
+                "variable": "validation"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "language"
+                ],
+                "variable": "language"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "optimize_code",
+          "position": {
+            "x": 1216,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 1216,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "code": "import json\nfrom datetime import datetime\n\ndef main(requirements: str, language: str, code_type: str, analysis: str, \n         original_code: str, optimized_code: str, validation: str) -> dict:\n    \n    # Create comprehensive code package\n    code_package = {\n        \"metadata\": {\n            \"timestamp\": datetime.now().isoformat(),\n            \"language\": language,\n            \"code_type\": code_type,\n            \"agent\": \"code_agent\"\n        },\n        \"requirements\": {\n            \"original_request\": requirements,\n            \"technical_analysis\": analysis\n        },\n        \"code_generation\": {\n            \"initial_version\": original_code,\n            \"optimized_version\": optimized_code,\n            \"validation_results\": validation\n        },\n        \"usage_instructions\": [\n            f\"This {code_type} is written in {language}\",\n            \"Review the code before using in production\",\n            \"Adapt variable names and imports as needed\",\n            \"Consider adding unit tests\",\n            \"Follow your project's coding standards\"\n        ]\n    }\n    \n    # Create formatted output\n    formatted_output = f\"\"\"# Generated {code_type} - {language}\n# Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n# Requirements: {requirements[:100]}{'...' if len(requirements) > 100 else ''}\n\n## Analysis\n{analysis}\n\n## Final Code\n```{language.lower()}\n{optimized_code}\n```\n\n## Validation Results\n{validation}\n\n## Usage Notes\n- Review and test the code before production use\n- Adapt imports and dependencies for your environment\n- Consider adding error handling specific to your use case\n- Add unit tests to verify functionality\n\"\"\"\n    \n    return {\n        \"code_package\": json.dumps(code_package, indent=2),\n        \"formatted_output\": formatted_output,\n        \"final_code\": optimized_code\n    }",
+            "code_language": "python3",
+            "desc": "Format the final code output package",
+            "outputs": {
+              "code_package": {
+                "children": null,
+                "type": "string"
+              },
+              "formatted_output": {
+                "children": null,
+                "type": "string"
+              },
+              "final_code": {
+                "children": null,
+                "type": "string"
+              }
+            },
+            "selected": false,
+            "title": "Format Output",
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "requirements"
+                ],
+                "variable": "requirements"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "language"
+                ],
+                "variable": "language"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "code_type"
+                ],
+                "variable": "code_type"
+              },
+              {
+                "value_selector": [
+                  "analyze_requirements",
+                  "text"
+                ],
+                "variable": "analysis"
+              },
+              {
+                "value_selector": [
+                  "generate_code",
+                  "text"
+                ],
+                "variable": "original_code"
+              },
+              {
+                "value_selector": [
+                  "optimize_code",
+                  "text"
+                ],
+                "variable": "optimized_code"
+              },
+              {
+                "value_selector": [
+                  "validate_syntax",
+                  "validation_report"
+                ],
+                "variable": "validation"
+              }
+            ]
+          },
+          "height": 53,
+          "id": "format_output",
+          "position": {
+            "x": 1500,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 1500,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "desc": "",
+            "outputs": [
+              {
+                "value_selector": [
+                  "format_output",
+                  "formatted_output"
+                ],
+                "variable": "code_result"
+              }
+            ],
+            "selected": false,
+            "title": "End",
+            "type": "end"
+          },
+          "height": 89,
+          "id": "end",
+          "position": {
+            "x": 1784,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 1784,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        }
+      ],
+      "viewport": {
+        "x": 136,
+        "y": 17,
+        "zoom": 1
+      }
+    }
+  }
+}

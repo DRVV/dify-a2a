@@ -1,0 +1,363 @@
+{
+  "app": {
+    "icon": "🔍",
+    "icon_background": "#FFEAD5",
+    "mode": "workflow",
+    "name": "Research Agent Workflow"
+  },
+  "workflow": {
+    "features": {
+      "file_upload": {
+        "image": {
+          "enabled": false,
+          "number_limits": 3,
+          "transfer_methods": [
+            "local_file",
+            "remote_url"
+          ]
+        }
+      },
+      "opening_statement": "",
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false,
+        "language": "",
+        "voice": ""
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "data": {
+            "sourceType": "start",
+            "targetType": "llm"
+          },
+          "id": "start-extract_keywords",
+          "source": "start",
+          "sourceHandle": "source",
+          "target": "extract_keywords",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code"
+          },
+          "id": "extract_keywords-simulate_search",
+          "source": "extract_keywords",
+          "sourceHandle": "source",
+          "target": "simulate_search",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "code",
+            "targetType": "llm"
+          },
+          "id": "simulate_search-analyze_results",
+          "source": "simulate_search",
+          "sourceHandle": "source",
+          "target": "analyze_results",
+          "targetHandle": "target",
+          "type": "custom"
+        },
+        {
+          "data": {
+            "sourceType": "llm",
+            "targetType": "end"
+          },
+          "id": "analyze_results-end",
+          "source": "analyze_results",
+          "sourceHandle": "source",
+          "target": "end",
+          "targetHandle": "target",
+          "type": "custom"
+        }
+      ],
+      "nodes": [
+        {
+          "data": {
+            "desc": "",
+            "selected": false,
+            "title": "Start",
+            "type": "start",
+            "variables": [
+              {
+                "label": "Research Query",
+                "max_length": 1000,
+                "options": [],
+                "required": true,
+                "type": "paragraph",
+                "variable": "query"
+              },
+              {
+                "label": "Research Context",
+                "max_length": 500,
+                "options": [],
+                "required": false,
+                "type": "text-input",
+                "variable": "context"
+              }
+            ]
+          },
+          "height": 115,
+          "id": "start",
+          "position": {
+            "x": 80,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 80,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Extract key search terms and research strategy",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 500,
+                "presence_penalty": 0,
+                "temperature": 0.3,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are a research expert. Extract key search terms and create a research strategy for the given query.\n\nProvide:\n1. Primary keywords (3-5 main terms)\n2. Secondary keywords (related terms)\n3. Research approach (academic, news, technical docs, etc.)\n4. Expected information types needed\n\nContext: {{#start.context#}}\n\nFormat your response as a structured analysis."
+              },
+              {
+                "role": "user",
+                "text": "Research query: {{#start.query#}}"
+              }
+            ],
+            "selected": false,
+            "title": "Extract Keywords",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "query"
+                ],
+                "variable": "query"
+              },
+              {
+                "value_selector": [
+                  "start",
+                  "context"
+                ],
+                "variable": "context"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "extract_keywords",
+          "position": {
+            "x": 364,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 364,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "code": "def main(query: str, keywords: str) -> dict:\n    # Simulate search results since we can't make actual HTTP requests\n    # In a real implementation, this would call search APIs\n    \n    simulated_results = [\n        {\n            \"title\": f\"Research Paper: {query[:50]}...\",\n            \"url\": \"https://example.com/paper1\",\n            \"snippet\": f\"Comprehensive analysis of {query}. This study examines the key factors and methodologies involved in understanding the topic.\",\n            \"source\": \"Academic Journal\"\n        },\n        {\n            \"title\": f\"Technical Documentation: {query[:50]}...\",\n            \"url\": \"https://example.com/docs1\",\n            \"snippet\": f\"Technical specifications and implementation details for {query}. Includes best practices and common patterns.\",\n            \"source\": \"Technical Documentation\"\n        },\n        {\n            \"title\": f\"Industry Report: {query[:50]}...\",\n            \"url\": \"https://example.com/report1\",\n            \"snippet\": f\"Market analysis and trends related to {query}. Current state and future projections.\",\n            \"source\": \"Industry Report\"\n        },\n        {\n            \"title\": f\"Case Study: {query[:50]}...\",\n            \"url\": \"https://example.com/case1\",\n            \"snippet\": f\"Real-world implementation and lessons learned from {query}. Challenges faced and solutions implemented.\",\n            \"source\": \"Case Study\"\n        }\n    ]\n    \n    return {\n        \"search_results\": str(simulated_results),\n        \"result_count\": len(simulated_results)\n    }",
+            "code_language": "python3",
+            "desc": "Simulate search results for research query",
+            "outputs": {
+              "search_results": {
+                "children": null,
+                "type": "string"
+              },
+              "result_count": {
+                "children": null,
+                "type": "number"
+              }
+            },
+            "selected": false,
+            "title": "Simulate Search",
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "query"
+                ],
+                "variable": "query"
+              },
+              {
+                "value_selector": [
+                  "extract_keywords",
+                  "text"
+                ],
+                "variable": "keywords"
+              }
+            ]
+          },
+          "height": 53,
+          "id": "simulate_search",
+          "position": {
+            "x": 648,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 648,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "desc": "Analyze and synthesize research findings",
+            "model": {
+              "completion_params": {
+                "frequency_penalty": 0,
+                "max_tokens": 1500,
+                "presence_penalty": 0,
+                "temperature": 0.7,
+                "top_p": 1
+              },
+              "mode": "chat",
+              "name": "gpt-4",
+              "provider": "openai"
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are a research analyst. Analyze the search results and create a comprehensive research summary.\n\nOriginal query: {{#start.query#}}\nKeyword analysis: {{#extract_keywords.text#}}\nSearch results: {{#simulate_search.search_results#}}\n\nProvide:\n1. Executive Summary (2-3 sentences)\n2. Key Findings (main points from research)\n3. Supporting Evidence (references to sources)\n4. Gaps or Limitations (what's missing)\n5. Recommendations (next steps or additional research needed)\n\nFormat as a structured research report."
+              }
+            ],
+            "selected": false,
+            "title": "Analyze Results",
+            "type": "llm",
+            "variables": [
+              {
+                "value_selector": [
+                  "start",
+                  "query"
+                ],
+                "variable": "query"
+              },
+              {
+                "value_selector": [
+                  "extract_keywords",
+                  "text"
+                ],
+                "variable": "keywords"
+              },
+              {
+                "value_selector": [
+                  "simulate_search",
+                  "search_results"
+                ],
+                "variable": "search_results"
+              }
+            ],
+            "vision": {
+              "enabled": false
+            }
+          },
+          "height": 97,
+          "id": "analyze_results",
+          "position": {
+            "x": 932,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 932,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        },
+        {
+          "data": {
+            "desc": "",
+            "outputs": [
+              {
+                "value_selector": [
+                  "analyze_results",
+                  "text"
+                ],
+                "variable": "research_report"
+              }
+            ],
+            "selected": false,
+            "title": "End",
+            "type": "end"
+          },
+          "height": 89,
+          "id": "end",
+          "position": {
+            "x": 1216,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 1216,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 243
+        }
+      ],
+      "viewport": {
+        "x": 136,
+        "y": 17,
+        "zoom": 1
+      }
+    }
+  }
+}
