@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Chainlit Web UI for Dify Orchestrator Debugging
-Interactive chat interface for testing multiple chatflows in parallel
+Interactive chat interface for testing multiple chatflows in parallel with role-based routing
 """
 
 import asyncio
@@ -13,6 +13,9 @@ from orchestrator import DifyOrchestrator
 
 # Global orchestrator instance
 orchestrator = None
+
+# Global storage for the last workflow result (for event builder)
+last_workflow_result = None
 
 def format_speaker_message(speaker_icon: str, speaker_name: str, content: str) -> str:
     """Format message with prominent speaker identification."""
@@ -37,6 +40,9 @@ async def start():
         
         # Get chatflow information
         chatflow_names = orchestrator.get_chatflow_names()
+        content_chatflows = orchestrator.get_content_chatflows()
+        summarizer_chatflow = orchestrator.get_summarizer_chatflow()
+        event_builder_chatflow = orchestrator.get_event_builder_chatflow()
         
         if not chatflow_names:
             await cl.Message(
@@ -47,22 +53,30 @@ async def start():
             ).send()
             return
         
-        # Display configured chatflows
-        chatflow_info = []
-        for name in chatflow_names:
+        # Display configured chatflows by role
+        content_info = []
+        for name in content_chatflows:
             config = orchestrator.get_chatflow_config(name)
-            chatflow_info.append(f"• **{name}**: {config.description}")
+            content_info.append(f"• **{name}**: {config.description}")
         
-        welcome_msg = f"""✅ **Orchestrator Ready!**
+        summarizer_info = "📝 **Summarizer Agent**: Not configured" if not summarizer_chatflow else f"📝 **Summarizer Agent**: {summarizer_chatflow}"
+        event_builder_info = "🎯 **Event Builder**: Not configured" if not event_builder_chatflow else f"🎯 **Event Builder**: {event_builder_chatflow}"
+        
+        welcome_msg = f"""✅ **Role-Based Orchestrator Ready!**
 
-**Active Chatflows ({len(chatflow_names)}):**
-{chr(10).join(chatflow_info)}
+**Content Chatflows ({len(content_chatflows)}):**
+{chr(10).join(content_info) if content_info else '• None configured'}
 
-💬 **How it works:**
+{summarizer_info}
+{event_builder_info}
+
+🔄 **Enhanced Workflow:**
 - Type any message below
-- Your message will be sent to all chatflows in parallel
-- Each chatflow response will appear as a separate chat bubble
-- Perfect for debugging and comparing responses!
+- Your message will be sent to content chatflows in parallel
+- Individual responses will appear first
+- Then responses will be summarized (if summarizer is configured)
+- Finally, events and actions will be generated automatically (if event builder is configured)
+- Perfect for multi-agent analysis and synthesis!
 
 Ready to chat! 🎉"""
         
@@ -93,49 +107,45 @@ async def handle_message(message: cl.Message):
         return
     
     user_message = message.content
-    chatflow_names = orchestrator.get_chatflow_names()
+    content_chatflows = orchestrator.get_content_chatflows()
+    summarizer_chatflow = orchestrator.get_summarizer_chatflow()
     
-    if not chatflow_names:
+    if not content_chatflows:
         await cl.Message(
             content=format_speaker_message(
                 "❌", "ERROR",
-                "❌ No chatflows available."
+                "❌ No content chatflows available."
             )
         ).send()
         return
     
-    # Show thinking message
-    thinking_msg = await cl.Message(
+    # Show initial processing message
+    processing_msg = await cl.Message(
         content=format_speaker_message(
             "⚡", "PROCESSING",
-            f"🤔 Sending your message to {len(chatflow_names)} chatflows..."
+            f"📤 **Step 1/2**: Sending your message to {len(content_chatflows)} content chatflows..."
         )
     ).send()
     
     start_time = time.time()
     
     try:
-        # Send to all chatflows in parallel
-        result = orchestrator.send_to_all_chatflows(
+        # Use the new orchestrate_with_summary method
+        result = orchestrator.orchestrate_with_summary(
             query=user_message,
             user="chainlit_user"
         )
         
         total_time = time.time() - start_time
         
-        # Remove thinking message
-        await thinking_msg.remove()
+        # Remove processing message
+        await processing_msg.remove()
         
-        # Display results
-        if result.get("status") == "success":
-            await display_successful_responses(result, total_time)
-        elif result.get("status") == "partial_success":
-            await display_partial_responses(result, total_time)
-        else:
-            await display_failed_responses(result, total_time)
+        # Display results using the new transparent multi-step flow
+        await display_orchestrated_results(result, total_time, summarizer_chatflow is not None)
             
     except Exception as e:
-        await thinking_msg.remove()
+        await processing_msg.remove()
         await cl.Message(
             content=format_speaker_message(
                 "❌", "ERROR",
@@ -143,66 +153,193 @@ async def handle_message(message: cl.Message):
             )
         ).send()
 
-async def display_successful_responses(result: Dict[str, Any], total_time: float):
-    """Display successful responses from all chatflows."""
-    responses = result.get("responses", {})
+async def display_orchestrated_results(result: Dict[str, Any], total_time: float, has_summarizer: bool):
+    """Display results from the orchestrated multi-step workflow."""
+    global last_workflow_result
     
-    # Summary message
-    await cl.Message(
-        content=format_speaker_message(
-            "📊", "RESULTS",
-            f"✅ **All {len(responses)} chatflows responded successfully** (Total time: {total_time:.2f}s)"
-        )
-    ).send()
+    # Store the result for potential event builder use
+    last_workflow_result = result
     
-    # Individual responses
-    for chatflow_name, response in responses.items():
-        await display_chatflow_response(chatflow_name, response, success=True)
-
-async def display_partial_responses(result: Dict[str, Any], total_time: float):
-    """Display partial responses when some chatflows fail."""
-    responses = result.get("responses", {})
-    errors = result.get("errors", {})
-    success_count = result.get("success_count", 0)
-    total_count = result.get("total_count", 0)
+    content_responses = result.get("content_responses", {})
+    content_errors = result.get("content_errors", {})
+    content_success_count = result.get("content_success_count", 0)
+    content_total_count = result.get("content_total_count", 0)
+    summary_response = result.get("summary_response")
+    summary_error = result.get("summary_error")
+    status = result.get("status", "unknown")
     
-    # Summary message
-    await cl.Message(
-        content=format_speaker_message(
-            "📊", "RESULTS",
-            f"⚠️ **Partial success: {success_count}/{total_count} chatflows responded** (Total time: {total_time:.2f}s)"
-        )
-    ).send()
-    
-    # Successful responses
-    for chatflow_name, response in responses.items():
-        await display_chatflow_response(chatflow_name, response, success=True)
-    
-    # Failed responses
-    for chatflow_name, error in errors.items():
+    # Step 1: Display content chatflow results
+    if content_responses:
+        if content_success_count == content_total_count:
+            status_msg = f"✅ **All {content_success_count} content chatflows responded successfully**"
+        else:
+            status_msg = f"⚠️ **Partial success: {content_success_count}/{content_total_count} content chatflows responded**"
+        
         await cl.Message(
             content=format_speaker_message(
-                "❌", f"{chatflow_name} ERROR",
-                f"❌ **Error:** {error}"
+                "📊", "CONTENT RESULTS",
+                f"{status_msg} (Step 1 completed in {total_time:.2f}s)"
             )
         ).send()
-
-async def display_failed_responses(result: Dict[str, Any], total_time: float):
-    """Display when all chatflows fail."""
-    errors = result.get("errors", {})
-    
-    await cl.Message(
-        content=format_speaker_message(
-            "📊", "RESULTS",
-            f"❌ **All chatflows failed** (Total time: {total_time:.2f}s)"
-        )
-    ).send()
-    
-    for chatflow_name, error in errors.items():
+        
+        # Add small delay to prevent payload bundling
+        await asyncio.sleep(0.1)
+        
+        # Display individual content responses with delays
+        for chatflow_name, response in content_responses.items():
+            await display_chatflow_response(chatflow_name, response, success=True)
+            await asyncio.sleep(0.1)  # Small delay between messages
+        
+        # Display content errors if any
+        for chatflow_name, error in content_errors.items():
+            await cl.Message(
+                content=format_speaker_message(
+                    "❌", f"{chatflow_name} ERROR",
+                    f"❌ **Error:** {error}"
+                )
+            ).send()
+            await asyncio.sleep(0.1)  # Small delay between messages
+    else:
+        # All content chatflows failed
         await cl.Message(
             content=format_speaker_message(
-                "❌", f"{chatflow_name} ERROR",
-                f"❌ **Error:** {error}"
+                "📊", "CONTENT RESULTS",
+                f"❌ **All content chatflows failed** (Step 1 failed in {total_time:.2f}s)"
+            )
+        ).send()
+        
+        await asyncio.sleep(0.1)
+        
+        for chatflow_name, error in content_errors.items():
+            await cl.Message(
+                content=format_speaker_message(
+                    "❌", f"{chatflow_name} ERROR",
+                    f"❌ **Error:** {error}"
+                )
+            ).send()
+            await asyncio.sleep(0.1)
+        return
+    
+    # Step 2: Handle summarization (if configured)
+    if has_summarizer:
+        # Add visual separator
+        await cl.Message(
+            content=format_speaker_message(
+                "🔄", "PROCESSING",
+                "📝 **Step 2/2**: Generating summary from responses..."
+            )
+        ).send()
+        
+        await asyncio.sleep(0.2)  # Longer delay before summary
+        
+        if summary_response:
+            # Extract summary content
+            summary_content = summary_response.get("answer", "")
+            if not summary_content:
+                summary_content = summary_response.get("data", summary_response.get("content", str(summary_response)))
+            
+            await cl.Message(
+                content=format_speaker_message(
+                    "📝", "SUMMARY",
+                    summary_content if summary_content else "*(No summary content)*"
+                )
+            ).send()
+            
+            await asyncio.sleep(0.2)  # Delay after summary
+            
+            # Check if event builder is available and call it automatically
+            event_builder_chatflow = orchestrator.get_event_builder_chatflow()
+            if event_builder_chatflow:
+                # Automatically trigger event builder
+                await cl.Message(
+                    content=format_speaker_message(
+                        "🔄", "PROCESSING",
+                        f"🎯 **Step 3/3**: Generating events and actions using {event_builder_chatflow}..."
+                    )
+                ).send()
+                
+                await asyncio.sleep(0.2)  # Delay before event builder
+                
+                try:
+                    start_time = time.time()
+                    
+                    # Format data for event builder
+                    event_builder_input = orchestrator.format_data_for_event_builder(
+                        original_query=last_workflow_result.get("query", ""),
+                        content_responses=last_workflow_result.get("content_responses", {}),
+                        summary_response=last_workflow_result.get("summary_response")
+                    )
+                    
+                    # Send to event builder
+                    event_builder_response = orchestrator.send_to_chatflow(
+                        chatflow_name=event_builder_chatflow,
+                        query=event_builder_input,
+                        user="chainlit_user"
+                    )
+                    
+                    total_time = time.time() - start_time
+                    
+                    # Extract event builder content
+                    event_content = event_builder_response.get("answer", "")
+                    if not event_content:
+                        event_content = event_builder_response.get("data", event_builder_response.get("content", str(event_builder_response)))
+                    
+                    # Display event builder result
+                    await cl.Message(
+                        content=format_speaker_message(
+                            "🎯", "EVENT BUILDER",
+                            event_content if event_content else "*(No event content generated)*"
+                        )
+                    ).send()
+                    
+                    await asyncio.sleep(0.2)  # Delay after event builder
+                    
+                    # Final completion message
+                    final_msg = f"🎉 **Complete 3-step workflow finished successfully!**\n\n✅ Content analysis completed\n✅ Summary generated\n✅ Events and actions created (in {total_time:.2f}s)"
+                    
+                except Exception as e:
+                    await cl.Message(
+                        content=format_speaker_message(
+                            "❌", "EVENT BUILDER ERROR",
+                            f"❌ **Event builder failed:** {str(e)}"
+                        )
+                    ).send()
+                    await asyncio.sleep(0.1)
+                    final_msg = "⚠️ **Workflow completed with partial success.** Content responses received and summarized, but event generation failed."
+            else:
+                # No event builder configured
+                if status == "success":
+                    final_msg = "🎉 **2-step workflow completed successfully!**\n\n✅ Content analysis completed\n✅ Summary generated"
+                else:
+                    final_msg = "⚠️ **Workflow completed with partial success.** Content responses received and summarized, but some errors occurred."
+            
+            await cl.Message(
+                content=format_speaker_message(
+                    "✅", "WORKFLOW COMPLETE",
+                    final_msg
+                )
+            ).send()
+        elif summary_error:
+            await cl.Message(
+                content=format_speaker_message(
+                    "❌", "SUMMARY ERROR",
+                    f"❌ **Summary generation failed:** {summary_error}"
+                )
+            ).send()
+        else:
+            await cl.Message(
+                content=format_speaker_message(
+                    "⚠️", "SUMMARY",
+                    "⚠️ **No summary generated** (unknown error)"
+                )
+            ).send()
+    else:
+        # No summarizer configured - add delay before final message
+        await asyncio.sleep(0.2)
+        await cl.Message(
+            content=format_speaker_message(
+                "ℹ️", "INFO",
+                "ℹ️ **No summarizer configured.** Only content chatflow responses are shown."
             )
         ).send()
 
@@ -245,6 +382,9 @@ def create_debug_info(response: Dict[str, Any]) -> str:
         return json.dumps(debug_data, indent=2, ensure_ascii=False)[:500] + ("..." if len(str(debug_data)) > 500 else "")
     except Exception:
         return ""
+
+# Note: Event builder now runs automatically after summarization
+# No need for manual button triggers
 
 @cl.on_stop
 async def stop():

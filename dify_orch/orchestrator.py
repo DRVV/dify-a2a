@@ -8,10 +8,11 @@ from dify_client import ChatClient
 class ChatflowConfig:
     """Configuration for a single chatflow."""
     
-    def __init__(self, api_key: str, name: str, description: str = ""):
+    def __init__(self, api_key: str, name: str, description: str = "", role: str = "content"):
         self.api_key = api_key
         self.name = name
         self.description = description
+        self.role = role
 
 class DifyOrchestrator:
     """
@@ -58,13 +59,14 @@ class DifyOrchestrator:
             api_key = os.getenv(f"DIFY_CHATFLOW_{i}_API_KEY")
             name = os.getenv(f"DIFY_CHATFLOW_{i}_NAME", f"chatflow_{i}")
             description = os.getenv(f"DIFY_CHATFLOW_{i}_DESCRIPTION", f"Chatflow {i}")
+            role = os.getenv(f"DIFY_CHATFLOW_{i}_ROLE", "content")
             
             if not api_key:
                 self.logger.warning(f"Missing API key for chatflow {i}, skipping...")
                 continue
             
             # Create configuration
-            config = ChatflowConfig(api_key, name, description)
+            config = ChatflowConfig(api_key, name, description, role)
             self.chatflow_configs[name] = config
             
             # Create client
@@ -291,6 +293,223 @@ class DifyOrchestrator:
             results["error"] = str(e)
         
         return results
+    
+    def get_chatflows_by_role(self, role: str) -> List[str]:
+        """Get list of chatflow names filtered by role.
+        
+        Args:
+            role: The role to filter by (e.g., "content", "summarizer")
+            
+        Returns:
+            List of chatflow names with the specified role
+        """
+        return [
+            name for name, config in self.chatflow_configs.items() 
+            if config.role == role
+        ]
+    
+    def get_content_chatflows(self) -> List[str]:
+        """Get list of content chatflow names (excludes summarizer).
+        
+        Returns:
+            List of content chatflow names
+        """
+        return self.get_chatflows_by_role("content")
+    
+    def get_summarizer_chatflow(self) -> Optional[str]:
+        """Get the summarizer chatflow name.
+        
+        Returns:
+            Summarizer chatflow name or None if not configured
+        """
+        summarizers = self.get_chatflows_by_role("summarizer")
+        if not summarizers:
+            return None
+        if len(summarizers) > 1:
+            self.logger.warning(f"Multiple summarizers found: {summarizers}. Using first one.")
+        return summarizers[0]
+    
+    def get_event_builder_chatflow(self) -> Optional[str]:
+        """Get the event_builder chatflow name.
+        
+        Returns:
+            Event builder chatflow name or None if not configured
+        """
+        event_builders = self.get_chatflows_by_role("event_builder")
+        if not event_builders:
+            return None
+        if len(event_builders) > 1:
+            self.logger.warning(f"Multiple event builders found: {event_builders}. Using first one.")
+        return event_builders[0]
+    
+    def format_responses_for_summary(self, responses: Dict[str, Any]) -> str:
+        """Format chatflow responses for summarizer input.
+        
+        Args:
+            responses: Dictionary of chatflow responses
+            
+        Returns:
+            Formatted string for summarizer input
+        """
+        if not responses:
+            return "No responses received from content chatflows."
+        
+        formatted_parts = []
+        formatted_parts.append("Please summarize the following responses from multiple AI agents:")
+        formatted_parts.append("")
+        
+        for i, (chatflow_name, response) in enumerate(responses.items(), 1):
+            # Extract the main answer content
+            answer = response.get("answer", "")
+            if not answer:
+                # Fallback to other possible response fields
+                answer = response.get("data", response.get("content", str(response)))
+            
+            formatted_parts.append(f"**Agent {i} ({chatflow_name}):**")
+            formatted_parts.append(answer)
+            formatted_parts.append("")  # Empty line for separation
+        
+        formatted_parts.append("Please provide a comprehensive summary that captures the key insights from all agents.")
+        
+        return "\n".join(formatted_parts)
+    
+    def format_data_for_event_builder(self, 
+                                     original_query: str,
+                                     content_responses: Dict[str, Any], 
+                                     summary_response: Optional[Dict[str, Any]] = None) -> str:
+        """Format all available data for event_builder input.
+        
+        Args:
+            original_query: The original user query
+            content_responses: Dictionary of content chatflow responses
+            summary_response: Optional summary response
+            
+        Returns:
+            Formatted string for event_builder input
+        """
+        formatted_parts = []
+        formatted_parts.append("Based on the following analysis and summary, please create appropriate events, actions, or next steps:")
+        formatted_parts.append("")
+        
+        # Add original query
+        formatted_parts.append("**Original Query:**")
+        formatted_parts.append(original_query)
+        formatted_parts.append("")
+        
+        # Add content responses
+        if content_responses:
+            formatted_parts.append("**Content Agent Responses:**")
+            for i, (chatflow_name, response) in enumerate(content_responses.items(), 1):
+                answer = response.get("answer", "")
+                if not answer:
+                    answer = response.get("data", response.get("content", str(response)))
+                
+                formatted_parts.append(f"Agent {i} ({chatflow_name}): {answer}")
+            formatted_parts.append("")
+        
+        # Add summary if available
+        if summary_response:
+            summary_content = summary_response.get("answer", "")
+            if not summary_content:
+                summary_content = summary_response.get("data", summary_response.get("content", str(summary_response)))
+            
+            formatted_parts.append("**Summary:**")
+            formatted_parts.append(summary_content)
+            formatted_parts.append("")
+        
+        formatted_parts.append("Please analyze the above information and provide actionable events, recommendations, or next steps that would be valuable to the user.")
+        
+        return "\n".join(formatted_parts)
+    
+    def orchestrate_with_summary(self, 
+                                query: str, 
+                                user: str = "default_user",
+                                conversation_id: Optional[str] = None,
+                                inputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Orchestrate content chatflows in parallel, then summarize responses.
+        
+        Args:
+            query: The message to send to content chatflows
+            user: User identifier
+            conversation_id: Optional conversation ID for context
+            inputs: Optional additional inputs for the workflow
+            
+        Returns:
+            Dictionary containing content responses, summary, and metadata
+        """
+        result = {
+            "query": query,
+            "content_responses": {},
+            "content_errors": {},
+            "summary_response": None,
+            "summary_error": None,
+            "status": "success"
+        }
+        
+        # Step 1: Get content chatflows
+        content_chatflows = self.get_content_chatflows()
+        if not content_chatflows:
+            result["status"] = "failed"
+            result["error"] = "No content chatflows configured"
+            return result
+        
+        # Step 2: Send to content chatflows in parallel
+        self.logger.info(f"Sending query to {len(content_chatflows)} content chatflows...")
+        content_result = self.send_to_multiple_chatflows(
+            chatflow_names=content_chatflows,
+            query=query,
+            user=user,
+            conversation_id=conversation_id,
+            inputs=inputs
+        )
+        
+        result["content_responses"] = content_result.get("responses", {})
+        result["content_errors"] = content_result.get("errors", {})
+        result["content_success_count"] = content_result.get("success_count", 0)
+        result["content_total_count"] = content_result.get("total_count", 0)
+        
+        # Check if we have any successful content responses
+        if not result["content_responses"]:
+            result["status"] = "failed"
+            result["error"] = "All content chatflows failed"
+            return result
+        
+        # Step 3: Get summarizer chatflow
+        summarizer_name = self.get_summarizer_chatflow()
+        if not summarizer_name:
+            self.logger.warning("No summarizer chatflow configured. Skipping summary step.")
+            result["status"] = "partial_success" if result["content_errors"] else "success"
+            result["summary_error"] = "No summarizer chatflow configured"
+            return result
+        
+        # Step 4: Format responses for summarizer
+        summary_input = self.format_responses_for_summary(result["content_responses"])
+        
+        # Step 5: Send to summarizer
+        try:
+            self.logger.info(f"Sending responses to summarizer '{summarizer_name}'...")
+            summary_response = self.send_to_chatflow(
+                chatflow_name=summarizer_name,
+                query=summary_input,
+                user=user,
+                conversation_id=conversation_id,
+                inputs=inputs
+            )
+            result["summary_response"] = summary_response
+            self.logger.info("Successfully received summary response")
+        except Exception as e:
+            self.logger.error(f"Error getting summary: {str(e)}")
+            result["summary_error"] = str(e)
+        
+        # Determine final status
+        if result["summary_error"]:
+            result["status"] = "partial_success"
+        elif result["content_errors"]:
+            result["status"] = "partial_success"
+        else:
+            result["status"] = "success"
+        
+        return result
     
     # Legacy methods for backward compatibility
     def send_to_chatflow_1(self, 
